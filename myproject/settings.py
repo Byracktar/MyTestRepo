@@ -11,21 +11,24 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os, environ #SONRADAN EKLENDİ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+env = environ.Env(DJ_DEBUG=(bool, False))            #SONRADAN EKLENDİ
+environ.Env.read_env(os.path.join(BASE_DIR, ".env")) #SONRADAN EKLENDİ
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zcn)7b=1lml%1gf#uj=5f!(8@6gdx1xhoe7*@pzr+d^q*83czu'
+SECRET_KEY = env("SECRET_KEY") #SONRADAN DEĞİŞTİRİLDİ
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DJ_DEBUG") #SONRADAN DEĞİŞTİRİLDİ
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env("ALLOWED").split(",") #SONRADAN DEĞİŞTİRİLDİ
 
 
 # Application definition
@@ -41,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -72,12 +76,30 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if env("DB_ENGINE", default="sqlite") == "postgres":  #SONRADAN DEĞİŞTİRİLDİ
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASS"),
+            "HOST": env("DB_HOST", default="127.0.0.1"),
+            "PORT": env("DB_PORT", default="5432"),
+            "CONN_MAX_AGE": 60,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
 
 
 # Password validation
@@ -102,9 +124,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+#LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "tr-tr" #SONRADAN EKLENDİ
 
-TIME_ZONE = 'UTC'
+#TIME_ZONE = 'UTC'
+TIME_ZONE = "Europe/Istanbul" #SONRADAN EKLENDİ
 
 USE_I18N = True
 
@@ -114,7 +138,18 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+MEDIA_URL  = "/media/" #SONRADAN EKLENDİ
+STATIC_ROOT = r"C:\apps\testweb\static"  #SONRADAN EKLENDİ
+MEDIA_ROOT  = r"C:\apps\testweb\media"   #SONRADAN EKLENDİ
+
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")   #SONRADAN EKLENDİ
+SESSION_COOKIE_SECURE = True                        #SONRADAN EKLENDİ
+CSRF_COOKIE_SECURE = True                              #SONRADAN EKLENDİ
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage" #SONRADAN EKLENDİ
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
