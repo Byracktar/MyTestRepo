@@ -15,14 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.http import HttpResponse
 
-def home(request):
-    return HttpResponse("OK")
+def health(_): 
+    return HttpResponse("ok")  # /healthz
 
 urlpatterns = [
-    path("", home),                 # kök URL -> "OK"
-    path("admin/", admin.site.urls)
+    path("healthz/", health),
+    path("admin/", admin.site.urls),
+    path("api/", include("myproject.api_urls")),  # /api/... rotaları
 ]
+
 

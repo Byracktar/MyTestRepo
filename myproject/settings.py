@@ -34,6 +34,8 @@ ALLOWED_HOSTS = env("ALLOWED").split(",") #SONRADAN DEĞİŞTİRİLDİ
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,6 +47,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -149,6 +152,14 @@ SESSION_COOKIE_SECURE = True                        #SONRADAN EKLENDİ
 CSRF_COOKIE_SECURE = True                              #SONRADAN EKLENDİ
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage" #SONRADAN EKLENDİ
+
+
+CORS_ALLOWED_ORIGINS=[
+    'http://localhost:3000', # React dev sunucusu
+    'http://127.0.0.1:3000',
+    'https://ergiongroup.com', #Domain 
+    'https://www.ergiongroup.com' #Domain    
+]
 
 
 # Default primary key field type
