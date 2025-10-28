@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os, environ #SONRADAN EKLENDİ
+import os #SONRADAN EKLENDİ
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,6 +35,7 @@ ALLOWED_HOSTS = env("ALLOWED").split(",") #SONRADAN DEĞİŞTİRİLDİ
 # Application definition
 
 INSTALLED_APPS = [
+    'account',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -58,7 +60,7 @@ ROOT_URLCONF = 'myproject.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -140,7 +142,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 MEDIA_URL  = "/media/" #SONRADAN EKLENDİ
-STATIC_ROOT = r"C:\apps\testweb\static"  #SONRADAN EKLENDİ
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+#STATIC_ROOT = r"C:\apps\testweb\static"  #SONRADAN EKLENDİ
 MEDIA_ROOT  = r"C:\apps\testweb\media"   #SONRADAN EKLENDİ
 
 
@@ -155,6 +158,10 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage" 
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_URL = 'login' # Giriş başarılı olunca ana sayfaya yönlendir.
+LOGOUT_URL = 'logout' # Çıkış başarılı olunca ana sayfaya yönlendir.
+LOGIN_REDİRECT_URL = 'home'
 
 #deneme deneme
 
