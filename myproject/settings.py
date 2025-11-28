@@ -148,8 +148,8 @@ MEDIA_ROOT  = r"C:\apps\testweb\media"   #SONRADAN EKLENDİ
 
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")   #SONRADAN EKLENDİ
-SESSION_COOKIE_SECURE = True                        #SONRADAN EKLENDİ
-CSRF_COOKIE_SECURE = True                              #SONRADAN EKLENDİ
+SESSION_COOKIE_SECURE = False                        #SONRADAN EKLENDİ
+CSRF_COOKIE_SECURE = False                              #SONRADAN EKLENDİ
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage" #SONRADAN EKLENDİ
 
@@ -161,7 +161,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = 'login' # Giriş başarılı olunca ana sayfaya yönlendir.
 LOGOUT_URL = 'logout' # Çıkış başarılı olunca ana sayfaya yönlendir.
-LOGIN_REDİRECT_URL = 'home'
+LOGIN_REDIRECT_URL = 'home'
 
 #deneme deneme
 
