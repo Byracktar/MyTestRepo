@@ -42,6 +42,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',  #SONRADAN EKLENDİ
+    'djoser',                # DJOSER
+    'rest_framework_simplejwt', # Simple JWT
+    
 ]
 
 MIDDLEWARE = [
@@ -53,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'myproject.urls'
@@ -143,13 +148,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 MEDIA_URL  = "/media/" #SONRADAN EKLENDİ
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-#STATIC_ROOT = r"C:\apps\testweb\static"  #SONRADAN EKLENDİ
-MEDIA_ROOT  = r"C:\apps\testweb\media"   #SONRADAN EKLENDİ
-
-
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")   #SONRADAN EKLENDİ
-SESSION_COOKIE_SECURE = False                        #SONRADAN EKLENDİ
-CSRF_COOKIE_SECURE = False                              #SONRADAN EKLENDİ
+MEDIA_ROOT  = os.path.join(BASE_DIR, "mediafiles")  # DÜZELTİLDİ
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage" #SONRADAN EKLENDİ
 
@@ -162,6 +161,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login' # Giriş başarılı olunca ana sayfaya yönlendir.
 LOGOUT_URL = 'logout' # Çıkış başarılı olunca ana sayfaya yönlendir.
 LOGIN_REDIRECT_URL = 'home'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    )
+}
+
+AUTH_USER_MODEL = 'account.CustomUser'  # Özel kullanıcı modelini kullan
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",   # React dev server adresi
+    "http://127.0.0.1:3000",
+    # Canlıya çıktığınızda React domain'i de buraya eklenecek
+]
 
 #deneme deneme
 
