@@ -3,6 +3,8 @@ from django.contrib import messages
 from .forms import CustomUserCreationForm, CustomAuthenticationForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework.decorators import api_view
 from rest_framework import viewsets, mixins
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import (
