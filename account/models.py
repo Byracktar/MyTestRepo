@@ -37,9 +37,6 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
-# -----------------------------
-# Custom User
-# -----------------------------
 class CustomUser(AbstractUser):
     
     username = None
@@ -65,9 +62,6 @@ class CustomUser(AbstractUser):
             return "Çalışan"
         return "Müşteri"
 
-# -----------------------------
-# Kategori / Service / WorkSample
-# -----------------------------
 class Category(models.Model):
     name = models.CharField(max_length=100, verbose_name="Kategori Adı")
     slug = models.SlugField(unique=True, blank=True)
@@ -111,17 +105,12 @@ class WorkSample(models.Model):
     class Meta:
         verbose_name = "Yapılan İş Örneği"
         verbose_name_plural = "Yapılan İş Örnekleri"
-
-# -----------------------------
-# Worker / Customer Profilleri
-# -----------------------------
 class Worker(models.Model):
-    # settings.AUTH_USER_MODEL kullanımı kesinlikle önerilir
+   
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='worker_profile')
     experience_years = models.IntegerField(default=0)
     bio = models.TextField(blank=True)
-    # Worker hangi kategorilerde çalışıyor? ManyToMany ekledim.
-    categories = models.ManyToManyField(Category, blank=True, related_name='workers')
+    #    categories = models.ManyToManyField(Category, blank=True, related_name='workers')
 
     def __str__(self):
         return f"Çalışan Profili: {self.user.email}"
