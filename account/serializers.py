@@ -7,27 +7,64 @@ from django.utils import timezone
 
 class CategorySerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
+    image = serializers.ImageField(read_only=True)
 
     class Meta:
         model = Category
-        fields = ('id','name','slug','parent','description_tr','description_de','image','children')
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "parent",
+            "description_tr",
+            "description_de",
+            "image",
+            "icon",
+            "children",
+        ]
 
     def get_children(self, obj):
         qs = obj.children.all()
         return CategorySerializer(qs, many=True, context=self.context).data
 
 class ServiceSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
     class Meta:
         model = Service
-        fields = '__all__'
+        fields = [
+            "id",
+            "name",
+            "category",
+            "category_name",
+            "description",
+            "price_info",
+            "duration_minutes",
+            "rating",
+            "image",
+            "price",
+        ]
 
 class WorkerSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
-    categories = CategorySerializer(many=True, read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    cv_url = serializers.FileField(source="cv", read_only=True)
+    
     class Meta:
         model = Worker
-        fields = ('id','user','user_email','experience_years','bio','categories')
+        fields = [
+            "id",
+            "name",
+            "email",
+            "phone",
+            "category",
+            "category_name",
+            "experience_years",
+            "status",
+            "apply_date",
+            "approved_appointments",
+            "rejected_appointments",
+            "cv_url",
+        ]
 
 class CustomerSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
@@ -102,3 +139,25 @@ class LegalTextSerializer(serializers.ModelSerializer):
         model = LegalText
         fields = '__all__'
         read_only_fields = ('last_updated',)        
+        
+
+class UserSerializer(serializers.ModelSerializer):
+    appointment_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "status",
+            "created_at",
+            "appointment_count",
+        ]
+
+    def get_appointment_count(self, obj):
+        if hasattr(obj, "customer_profile"):
+            return obj.customer_profile.booked_appointments.count()
+        return 0

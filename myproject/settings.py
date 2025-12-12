@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'djoser',                # DJOSER
     'rest_framework_simplejwt', # Simple JWT
     'drf_yasg',
+    'corsheaders', #SONRADAN EKLENDİ
     
 ]
 
