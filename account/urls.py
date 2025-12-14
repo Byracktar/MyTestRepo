@@ -34,7 +34,8 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('register/', views.register_view, name='register'),
     path("", views.home_view, name="home"),
-    
+    path('auth/users/me/', views.MeView.as_view(), name='users_me'),
+    path('api/worker/me/', views.WorkerMeView.as_view(), name='worker_me'),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),

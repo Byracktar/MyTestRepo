@@ -37,9 +37,6 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
-# -----------------------------
-# Custom User
-# -----------------------------
 class CustomUser(AbstractUser):
     
     username = None
@@ -49,6 +46,10 @@ class CustomUser(AbstractUser):
     is_customer = models.BooleanField(default=True, verbose_name="Müşteri Rolü")
     is_employee = models.BooleanField(default=False, verbose_name="Çalışan Rolü")
     is_admin = models.BooleanField(default=False, verbose_name="Yönetici Rolü")
+    role = models.CharField(max_length=20, default="customer")  
+    status = models.CharField(max_length=20, default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
@@ -60,14 +61,11 @@ class CustomUser(AbstractUser):
 
     def get_role(self):
         if self.is_admin:
-            return "Yönetici"
+            return "admin"
         if self.is_employee:
-            return "Çalışan"
-        return "Müşteri"
+            return "provider"
+        return "customer"
 
-# -----------------------------
-# Kategori / Service / WorkSample
-# -----------------------------
 class Category(models.Model):
     name = models.CharField(max_length=100, verbose_name="Kategori Adı")
     slug = models.SlugField(unique=True, blank=True)
@@ -75,6 +73,8 @@ class Category(models.Model):
     description_tr = models.TextField(blank=True, verbose_name="Açıklama (Türkçe)")
     description_de = models.TextField(blank=True, verbose_name="Açıklama (Almanca)")
     image = models.ImageField(upload_to='category_images/', blank=True, null=True, verbose_name="Kategori Görseli")
+    icon = models.CharField(max_length=50, blank=True, null=True)
+
 
     class Meta:
         verbose_name = "Hizmet Kategorisi"
@@ -94,6 +94,10 @@ class Service(models.Model):
     description = models.TextField(verbose_name="Hizmet Detayları")
     price_info = models.CharField(max_length=255, blank=True, verbose_name="Fiyat Bilgisi/Aralığı")
     duration_minutes = models.IntegerField(default=60, verbose_name="Ortalama Süre (dk)")
+    rating = models.FloatField(default=0.0)
+    image = models.URLField(blank=True, null=True)   # veya ImageField
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
 
     class Meta:
         verbose_name = "Hizmet Detayı"
@@ -111,20 +115,43 @@ class WorkSample(models.Model):
     class Meta:
         verbose_name = "Yapılan İş Örneği"
         verbose_name_plural = "Yapılan İş Örnekleri"
-
-# -----------------------------
-# Worker / Customer Profilleri
-# -----------------------------
 class Worker(models.Model):
-    # settings.AUTH_USER_MODEL kullanımı kesinlikle önerilir
+   
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='worker_profile')
     experience_years = models.IntegerField(default=0)
     bio = models.TextField(blank=True)
-    # Worker hangi kategorilerde çalışıyor? ManyToMany ekledim.
-    categories = models.ManyToManyField(Category, blank=True, related_name='workers')
+    name = models.CharField(max_length=255, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+
+    status = models.CharField(
+    max_length=20,
+    choices=[
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ],
+    default="pending"
+    )
+
+    apply_date = models.DateTimeField(auto_now_add=True)
+
+    approved_appointments = models.IntegerField(default=0)
+    rejected_appointments = models.IntegerField(default=0)
+
+    cv = models.FileField(upload_to="cv/", blank=True, null=True)
+    
+    category = models.ForeignKey(
+    Category,
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="workers" 
+    )
 
     def __str__(self):
         return f"Çalışan Profili: {self.user.email}"
+
+
 
 class Customer(models.Model):
     user = models.OneToOneField(
@@ -139,9 +166,8 @@ class Customer(models.Model):
     def __str__(self):
         return f"Müşteri Profili: {self.user.email}"
 
-# -----------------------------
 # Employee Availability
-# -----------------------------
+
 class EmployeeAvailability(models.Model):
     DAY_CHOICES = [
         (0, 'Pazartesi'), (1, 'Salı'), (2, 'Çarşamba'), (3, 'Perşembe'),
@@ -166,9 +192,8 @@ class EmployeeAvailability(models.Model):
         if self.start_time >= self.end_time:
             raise ValidationError("Başlangıç saati bitiş saatinden önce olmalıdır.")
 
-# -----------------------------
 # Appointment (Randevu)
-# -----------------------------
+
 class Appointment(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'Beklemede'),

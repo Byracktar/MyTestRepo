@@ -5,15 +5,19 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view
-from rest_framework import viewsets, mixins
+from rest_framework import viewsets, mixins, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.views import APIView
+
+
 from .models import (
-    Category, Service, Appointment, EmployeeAvailability, Customer, Worker , WorkSample, LegalText
+    Category, Service, Appointment, EmployeeAvailability, Customer, Worker , WorkSample, LegalText,
+    
 )
 from .serializers import (
     CategorySerializer, ServiceSerializer, AppointmentSerializer, 
     EmployeeAvailabilitySerializer, CustomerSerializer, WorkerSerializer, 
-    WorkSampleSerializer, LegalTextSerializer
+    WorkSampleSerializer, LegalTextSerializer,CustomUserMeSerializer,WorkerMeSerializer
 )
 from .permissions import (
     IsAdminUser, IsEmployeeUser, IsSelfOrAdmin, 
@@ -22,6 +26,12 @@ from .permissions import (
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = CustomUserMeSerializer(request.user)
+        return Response(serializer.data)
 def login_view(request):
     if request.method == "POST":
         form = CustomAuthenticationForm(request, data=request.POST)
@@ -106,7 +116,69 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             # Oluşturma sadece müşteriye açık
             self.permission_classes = [IsCustomerUser]
         return super().get_permissions()
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        appointment = Appointment.objects.get(pk=pk)
+        user = request.user
 
+        if not hasattr(user, "worker_profile"):
+            return Response(
+                {"detail": "Sadece çalışanlar randevu onaylayabilir."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if appointment.worker != user.worker_profile:
+            return Response(
+                {"detail": "Bu randevu size ait değil."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if appointment.status != "PENDING":
+            return Response(
+                {"detail": "Bu randevu zaten karara bağlanmış."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        appointment.status = "APPROVED"
+        appointment.save(update_fields=["status"])
+        return Response(
+            {"id": appointment.id, "status": appointment.status},
+            status=status.HTTP_200_OK
+        )
+
+    # =========================
+    # WORKER REJECT
+    # =========================
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        appointment = Appointment.objects.get(pk=pk)
+        user = request.user
+
+        if not hasattr(user, "worker_profile"):
+            return Response(
+                {"detail": "Sadece çalışanlar randevu reddedebilir."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if appointment.worker != user.worker_profile:
+            return Response(
+                {"detail": "Bu randevu size ait değil."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if appointment.status != "PENDING":
+            return Response(
+                {"detail": "Bu randevu zaten karara bağlanmış."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        appointment.status = "REJECTED"
+        appointment.save(update_fields=["status"])
+
+        return Response(
+            {"status": appointment.status},
+            status=status.HTTP_200_OK
+        )
 
 class EmployeeAvailabilityViewSet(viewsets.ModelViewSet):
     queryset = EmployeeAvailability.objects.all()
@@ -168,10 +240,13 @@ class WorkerViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Worker.objects.none() 
+        user = self.request.user
         # Çalışan sadece kendi profilini görebilir
-        if self.request.user.is_employee and hasattr(self.request.user, 'worker_profile'):
-            return Worker.objects.filter(user=self.request.user)
-        # Admin/Müşteri herkesi görebilir
+        if user.is_authenticated and getattr(user, 'is_employee', False) and hasattr(user, 'worker_profile'):
+            return Worker.objects.filter(user=user)
+
         return super().get_queryset()
 
 
@@ -181,6 +256,8 @@ class WorkSampleViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrAdmin] # Varsayılan: Herkes görebilir, sadece Admin ekleyebilir/güncelleyebilir.
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Worker.objects.none() 
         # Çalışan kendi iş örneklerini görsün, Müşteri hepsini görsün.
         if self.request.user.is_employee and hasattr(self.request.user, 'worker_profile'):
             return WorkSample.objects.filter(worker_profile=self.request.user.worker_profile)
@@ -212,3 +289,10 @@ class LegalTextViewSet(viewsets.ModelViewSet):
         else:
             self.permission_classes = [IsAdminUser]
         return super().get_permissions()
+class WorkerMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        worker = request.user.worker_profile
+        serializer = WorkerMeSerializer(worker)
+        return Response(serializer.data)

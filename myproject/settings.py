@@ -177,6 +177,9 @@ AUTH_USER_MODEL = 'account.CustomUser'  # Özel kullanıcı modelini kullan
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",   # React dev server adresi
     "http://127.0.0.1:3000",
+    "http://31.57.187.186:3000",
+    "http://31.57.187.186:9597",
+    
     # Canlıya çıktığınızda React domain'i de buraya eklenecek
 ]
 
