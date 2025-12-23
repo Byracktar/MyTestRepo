@@ -4,18 +4,47 @@ from .models import (
     EmployeeAvailability, WorkSample, LegalText
 )
 from django.utils import timezone
+# serializers.py
 class CustomUserMeSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
+    phone_number = serializers.CharField(
+        source='customer_profile.phone_number', required=False, allow_blank=True
+    )
+    register_date = serializers.DateTimeField(source='created_at', read_only=True)
+    appointments_count = serializers.SerializerMethodField()  # 👈 added
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'first_name', 'last_name', 'email', 'role']
+        fields = ['id', 'first_name', 'last_name', 'email', 'role', 'phone_number', 'register_date', 'appointments_count']
 
     def get_role(self, obj):
         return obj.get_role()
+
+    def get_appointments_count(self, obj):
+        # obj is a CustomUser instance
+        if hasattr(obj, 'customer_profile'):
+            return obj.customer_profile.booked_appointments.count()
+        elif hasattr(obj, 'worker_profile'):
+            return obj.worker_profile.received_appointments.count()
+        return 0
+
+    def update(self, instance, validated_data):
+        phone_data = validated_data.pop('customer_profile', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if phone_data and hasattr(instance, 'customer_profile'):
+            instance.customer_profile.phone_number = phone_data.get(
+                'phone_number', instance.customer_profile.phone_number
+            )
+            instance.customer_profile.save()
+        return instance
+
+
 class CategorySerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
     image = serializers.ImageField(read_only=True)
+    
     class Meta:
         model = Category
         fields = [
@@ -35,6 +64,9 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ServiceSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
+    category_icon = serializers.CharField(source="category.icon", read_only=True)
+    root = serializers.SerializerMethodField()  # 👈 new field
+
     class Meta:
         model = Service
         fields = [
@@ -42,6 +74,8 @@ class ServiceSerializer(serializers.ModelSerializer):
             "name",
             "category",
             "category_name",
+            "category_icon",
+            "root",  # 👈 include root
             "description",
             "price_info",
             "duration_minutes",
@@ -50,18 +84,44 @@ class ServiceSerializer(serializers.ModelSerializer):
             "price",
         ]
 
+    def get_root(self, obj):
+        category = obj.category
+        if not category:
+            return None
+        # climb up to the top-most parent
+        while category.parent:
+            category = category.parent
+        return {
+            "id": category.id,
+            "name": category.name,
+            "slug": category.slug,
+            "icon": category.icon,
+        }
+
+# serializers.py
+
+
+
 class WorkerSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
     categories = CategorySerializer(many=True, read_only=True)
     class Meta:
         model = Worker
         fields = ('id','user','user_email','experience_years','bio','categories')
+class WorkSampleWithWorkerSerializer(serializers.ModelSerializer):
+    worker_profile = WorkerSerializer(read_only=True)
 
+    class Meta:
+        model = WorkSample
+        fields = "__all__"
 class CustomerSerializer(serializers.ModelSerializer):
+    user = CustomUserMeSerializer(read_only=True)  # nested user object
     user_email = serializers.EmailField(source='user.email', read_only=True)
+
     class Meta:
         model = Customer
-        fields = ('id','user','user_email','phone_number','address')
+        fields = ('id', 'user', 'user_email', 'phone_number', 'address')
+
 class WorkerMeSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source="user.id", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
@@ -138,14 +198,34 @@ class EmployeeAvailabilitySerializer(serializers.ModelSerializer):
 
 class AppointmentSerializer(serializers.ModelSerializer):
     customer = serializers.PrimaryKeyRelatedField(read_only=True)
-    worker = serializers.PrimaryKeyRelatedField(queryset=Worker.objects.all())
+    worker = serializers.PrimaryKeyRelatedField(
+        queryset=Worker.objects.all(), write_only=True
+    )
+
+    worker_profile = WorkerSerializer(source="worker", read_only=True)
+
     service_name = serializers.CharField(source='service.name', read_only=True)
     customer_email = serializers.EmailField(source='customer.user.email', read_only=True)
+    customer_phone_number = serializers.CharField(source='customer.phone_number', read_only=True)
 
     class Meta:
         model = Appointment
-        fields = '__all__'
-        read_only_fields = ('status','created_at','customer')
+        fields = [
+            "id",
+            "start_time",
+            "end_time",
+            "status",
+            "service",
+            "service_name",
+            "customer",
+            "customer_email",
+            "customer_phone_number",
+            "worker",
+            "worker_profile",   # 👈 added
+            "created_at",
+        ]
+        read_only_fields = ("status", "created_at", "customer")
+
 
     def validate(self, data):
         start_time = data.get('start_time')
@@ -197,3 +277,56 @@ class LegalTextSerializer(serializers.ModelSerializer):
         model = LegalText
         fields = '__all__'
         read_only_fields = ('last_updated',)        
+class BookedAppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ["id", "start_time", "end_time"]
+from rest_framework import serializers
+from .models import Appointment
+
+class AppointmentWithProfilesSerializer(serializers.ModelSerializer):
+    worker_profile = serializers.SerializerMethodField()
+    user_profile = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Appointment
+        fields = [
+            "id",
+            "start_time",
+            "end_time",
+            "status",
+            "worker_profile",
+            "user_profile",
+        ]
+
+    def get_worker_profile(self, obj):
+        if obj.worker is None:
+            return None
+        worker = obj.worker
+        return {
+            "id": worker.id,
+            "email": getattr(worker.user, "email", None),
+            "first_name": getattr(worker.user, "first_name", None),
+            "last_name": getattr(worker.user, "last_name", None),
+            "experience_years": worker.experience_years,
+            "bio": worker.bio,
+            "phone": worker.phone,
+            "status": worker.status,
+            "apply_date": worker.apply_date,
+            "category": worker.category.name if worker.category else None,
+        }
+
+    def get_user_profile(self, obj):
+        if obj.customer is None:
+            return None
+        customer = obj.customer
+        return {
+            "id": customer.id,
+            "email": getattr(customer.user, "email", None),
+            "first_name": getattr(customer.user, "first_name", None),
+            "last_name": getattr(customer.user, "last_name", None),
+            "phone_number": customer.phone_number,
+            "address": customer.address,
+            
+        }
+

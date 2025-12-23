@@ -95,7 +95,12 @@ class Service(models.Model):
     price_info = models.CharField(max_length=255, blank=True, verbose_name="Fiyat Bilgisi/Aralığı")
     duration_minutes = models.IntegerField(default=60, verbose_name="Ortalama Süre (dk)")
     rating = models.FloatField(default=0.0)
-    image = models.URLField(blank=True, null=True)   # veya ImageField
+    image = models.ImageField(
+    upload_to='service_images/',  # folder inside MEDIA_ROOT
+    blank=True,
+    null=True,
+    verbose_name="Hizmet Görseli")
+   # veya ImageField
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
 

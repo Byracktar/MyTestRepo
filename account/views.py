@@ -8,7 +8,8 @@ from rest_framework.decorators import api_view
 from rest_framework import viewsets, mixins, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-
+from rest_framework.permissions import AllowAny
+from django.utils.timezone import now
 
 from .models import (
     Category, Service, Appointment, EmployeeAvailability, Customer, Worker , WorkSample, LegalText,
@@ -17,7 +18,8 @@ from .models import (
 from .serializers import (
     CategorySerializer, ServiceSerializer, AppointmentSerializer, 
     EmployeeAvailabilitySerializer, CustomerSerializer, WorkerSerializer, 
-    WorkSampleSerializer, LegalTextSerializer,CustomUserMeSerializer,WorkerMeSerializer
+    WorkSampleSerializer, LegalTextSerializer,CustomUserMeSerializer,WorkerMeSerializer,
+    WorkSampleWithWorkerSerializer, BookedAppointmentSerializer,AppointmentWithProfilesSerializer
 )
 from .permissions import (
     IsAdminUser, IsEmployeeUser, IsSelfOrAdmin, 
@@ -32,6 +34,14 @@ class MeView(APIView):
     def get(self, request):
         serializer = CustomUserMeSerializer(request.user)
         return Response(serializer.data)
+
+    def patch(self, request):
+        serializer = CustomUserMeSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 def login_view(request):
     if request.method == "POST":
         form = CustomAuthenticationForm(request, data=request.POST)
@@ -91,6 +101,24 @@ class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
     permission_classes = [ReadOnlyOrAdmin]
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="work-samples",
+        serializer_class=WorkSampleWithWorkerSerializer
+    )
+    def work_samples(self, request, pk=None):
+        service = self.get_object()
+
+        queryset = (
+            WorkSample.objects
+            .filter(service=service)
+            .select_related("worker_profile", "worker_profile__user")
+        )
+
+        return Response(
+            self.get_serializer(queryset, many=True).data
+        )
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -179,7 +207,34 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             {"status": appointment.status},
             status=status.HTTP_200_OK
         )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="all-with-profiles",
+        permission_classes=[IsAdminUser],  # Admin only
+    )
+    def all_with_profiles(self, request):
+        """
+        Admin-only: fetch all appointments with worker and customer profiles safely.
+        Prints errors if something fails.
+        """
+        try:
+            queryset = self.get_queryset().select_related(
+                "worker__user", "customer__user", "service"
+            )
+            serializer = AppointmentWithProfilesSerializer(queryset, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            # Print the full error to console/log
+            print("Error in all-with-profiles endpoint:", str(e))
+            import traceback
+            traceback.print_exc()
 
+            # Return error response
+            return Response(
+                {"detail": "An error occurred. See server logs for details.", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 class EmployeeAvailabilityViewSet(viewsets.ModelViewSet):
     queryset = EmployeeAvailability.objects.all()
     serializer_class = EmployeeAvailabilitySerializer
@@ -207,6 +262,109 @@ class EmployeeAvailabilityViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             self.permission_classes = [IsEmployeeUser | IsAdminUser]
         return super().get_permissions()
+    # ✅ NEW ACTION
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='by-worker/(?P<worker_id>[^/.]+)',
+        permission_classes=[AllowAny]
+    )
+    def by_worker(self, request, worker_id=None):
+        """
+        Customer/Admin fetch availability + booked dates of a worker
+        """
+
+        # ✅ Weekly availability
+        availabilities = EmployeeAvailability.objects.filter(
+            worker_profile_id=worker_id,
+            is_active=True
+        )
+
+        # ❌ Booked (occupied) slots
+        booked_appointments = Appointment.objects.filter(
+            worker_id=worker_id,
+            status="APPROVED",       # optionally include PENDING
+            end_time__gte=now()      # ignore past bookings
+        ).order_by("start_time")
+
+        return Response({
+            "availabilities": EmployeeAvailabilitySerializer(
+                availabilities, many=True
+            ).data,
+            "booked": BookedAppointmentSerializer(
+                booked_appointments, many=True
+            ).data
+        })
+    @action(
+        detail=False,
+        methods=['put'],
+        url_path='bulk-update',
+        permission_classes=[IsEmployeeUser | IsAdminUser]
+    )
+    def bulk_update(self, request):
+        data_list = request.data
+        if not isinstance(data_list, list):
+            return Response({"detail": "Data must be a list."}, status=400)
+
+        if not hasattr(request.user, 'worker_profile'):
+            return Response({"detail": "User has no worker profile."}, status=400)
+
+        updated_objects = []
+        errors = []
+
+        request_ids = []
+
+        for item in data_list:
+            obj_id = item.get('id')
+            day_of_week = item.get('day_of_week')
+            start_time = item.get('start_time') or "00:00:00"
+            end_time = item.get('end_time') or "00:00:00"
+            item['start_time'] = start_time
+            item['end_time'] = end_time
+
+            try:
+                # Try to get existing by ID
+                if obj_id:
+                    availability = EmployeeAvailability.objects.get(
+                        id=obj_id, worker_profile=request.user.worker_profile
+                    )
+                else:
+                    # Or by unique constraint (day_of_week + times)
+                    availability = EmployeeAvailability.objects.filter(
+                        worker_profile=request.user.worker_profile,
+                        day_of_week=day_of_week,
+                        start_time=start_time,
+                        end_time=end_time
+                    ).first()
+
+                if availability:
+                    # Update existing
+                    serializer = EmployeeAvailabilitySerializer(
+                        availability, data=item, partial=True
+                    )
+                else:
+                    # Create new
+                    serializer = EmployeeAvailabilitySerializer(data=item)
+
+                if serializer.is_valid():
+                    serializer.save(worker_profile=request.user.worker_profile)
+                    updated_objects.append(serializer.data)
+                    if 'id' in serializer.data:
+                        request_ids.append(serializer.data['id'])
+                else:
+                    errors.append({"item": item, "error": serializer.errors})
+
+            except EmployeeAvailability.DoesNotExist:
+                errors.append({"item": item, "error": "Not found"})
+            except Exception as e:
+                errors.append({"item": item, "error": f"Unexpected error: {str(e)}"})
+
+        # Delete any existing availabilities not in the request
+        EmployeeAvailability.objects.filter(
+            worker_profile=request.user.worker_profile
+        ).exclude(id__in=request_ids).delete()
+
+        return Response({"updated": updated_objects, "errors": errors}, status=200)
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
@@ -226,28 +384,44 @@ class CustomerViewSet(viewsets.ModelViewSet):
             return Customer.objects.filter(user=self.request.user)
         # Admin/Çalışan herkesi görebilir
         return super().get_queryset()
-
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='all',
+        permission_classes=[IsAdminUser]  # Only admin can access
+    )
+    def all_customers(self, request):
+        customers = Customer.objects.all().select_related('user')
+        serializer = CustomerSerializer(customers, many=True)
+        return Response(serializer.data)
 
 class WorkerViewSet(viewsets.ModelViewSet):
     queryset = Worker.objects.all()
     serializer_class = WorkerSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.action in ['retrieve', 'update', 'partial_update']:
-            # Sadece Admin veya kendi profilini görme/güncelleme
             self.permission_classes = [IsSelfOrAdmin]
         return super().get_permissions()
-    
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Worker.objects.none() 
+        
         user = self.request.user
+        
+        # Admin veya superuser tüm çalışanları görebilir
+        if user.is_authenticated and user.is_staff:
+            return Worker.objects.all()
+        
         # Çalışan sadece kendi profilini görebilir
-        if user.is_authenticated and getattr(user, 'is_employee', False) and hasattr(user, 'worker_profile'):
+        if getattr(user, 'is_employee', False) and hasattr(user, 'worker_profile'):
             return Worker.objects.filter(user=user)
+        
+        # Müşteri veya diğer kullanıcılar: boş queryset
+        return Worker.objects.none()
 
-        return super().get_queryset()
 
 
 class WorkSampleViewSet(viewsets.ModelViewSet):
@@ -295,4 +469,33 @@ class WorkerMeView(APIView):
     def get(self, request):
         worker = request.user.worker_profile
         serializer = WorkerMeSerializer(worker)
+        return Response(serializer.data)
+    def patch(self, request):
+        worker = request.user.worker_profile
+        serializer = WorkerMeSerializer(
+            worker,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+class CustomerMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(responses={200: CustomerSerializer})
+    def get(self, request):
+        if not hasattr(request.user, "customer_profile"):
+            return Response({"detail": "This user has no customer profile."}, status=404)
+        serializer = CustomerSerializer(request.user.customer_profile)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(request_body=CustomerSerializer, responses={200: CustomerSerializer})
+    def patch(self, request):
+        if not hasattr(request.user, "customer_profile"):
+            return Response({"detail": "This user has no customer profile."}, status=404)
+        serializer = CustomerSerializer(request.user.customer_profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)

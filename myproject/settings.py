@@ -31,7 +31,7 @@ DEBUG = env("DJ_DEBUG") #SONRADAN DEĞİŞTİRİLDİ
 
 ALLOWED_HOSTS = env("ALLOWED").split(",") #SONRADAN DEĞİŞTİRİLDİ
 
-
+EXPIRING_TOKEN_LIFETIME = 60 * 60 * 24 * 7
 # Application definition
 
 INSTALLED_APPS = [
@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -58,7 +59,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'myproject.urls'
@@ -80,10 +81,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
 
+MEDIA_URL = '/mediafiles/'
+MEDIA_ROOT = BASE_DIR / 'mediafiles'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Database
+# FORCE POSTGRES (We removed the if/else to fix the connection issue)
+# ... previous code ...
+
+# --- PASTE THIS DEBUG SECTION ---
+print("------------------------------------------------")
+print("DEBUG CHECK:")
+test_val = env("DB_ENGINE")
+print(f"What Django sees in .env: '{test_val}'")
+print(f"Is it equal to 'postgres'? {test_val == 'postgres'}")
+print("------------------------------------------------")
+# --------------------------------
 if env("DB_ENGINE", default="sqlite") == "postgres":  #SONRADAN DEĞİŞTİRİLDİ
     DATABASES = {
         "default": {
@@ -96,6 +111,7 @@ if env("DB_ENGINE", default="sqlite") == "postgres":  #SONRADAN DEĞİŞTİRİLD
             "CONN_MAX_AGE": 60,
         }
     }
+
 else:
     DATABASES = {
         "default": {
@@ -173,12 +189,13 @@ REST_FRAMEWORK = {
 }
 
 AUTH_USER_MODEL = 'account.CustomUser'  # Özel kullanıcı modelini kullan
+STATIC_URL = "/django_static/"
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",   # React dev server adresi
-    "http://127.0.0.1:3000",
-    "http://31.57.187.186:3000",
-    "http://31.57.187.186:9597",
+    "http://4llinone.com",
+    "http://www.4llinone.com",
+    "https://4llinone.com",
+    "https://www.4llinone.com",
     
     # Canlıya çıktığınızda React domain'i de buraya eklenecek
 ]
