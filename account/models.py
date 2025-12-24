@@ -74,7 +74,14 @@ class Category(models.Model):
     description_de = models.TextField(blank=True, verbose_name="Açıklama (Almanca)")
     image = models.ImageField(upload_to='category_images/', blank=True, null=True, verbose_name="Kategori Görseli")
     icon = models.CharField(max_length=50, blank=True, null=True)
-
+    
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Fiyat"
+    )
 
     class Meta:
         verbose_name = "Hizmet Kategorisi"
@@ -95,7 +102,12 @@ class Service(models.Model):
     price_info = models.CharField(max_length=255, blank=True, verbose_name="Fiyat Bilgisi/Aralığı")
     duration_minutes = models.IntegerField(default=60, verbose_name="Ortalama Süre (dk)")
     rating = models.FloatField(default=0.0)
-    image = models.URLField(blank=True, null=True)   # veya ImageField
+    image = models.ImageField(
+    upload_to='service_images/',  # folder inside MEDIA_ROOT
+    blank=True,
+    null=True,
+    verbose_name="Hizmet Görseli")
+   # veya ImageField
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
 
@@ -115,42 +127,57 @@ class WorkSample(models.Model):
     class Meta:
         verbose_name = "Yapılan İş Örneği"
         verbose_name_plural = "Yapılan İş Örnekleri"
+
 class Worker(models.Model):
-   
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='worker_profile')
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='worker_profile'
+    )
+    
+    # WorkerApplication fields
+    first_name = models.CharField(max_length=255, blank=True, null=True)
+    last_name = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+
+    phone = models.CharField(max_length=20)
+    birth_date = models.DateField(blank=True, null=True)
+    address = models.CharField(max_length=500, blank=True, null=True)
+    city = models.CharField(max_length=255)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+    category = models.ForeignKey(
+        'Category',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='workers'
+    )
+    experience_years = models.CharField(max_length=20, default="0")
+    cv = models.FileField(upload_to="cv/", blank=True, null=True)
+    id_document = models.FileField(upload_to="id_documents/", blank=True, null=True)
+    accept_terms = models.BooleanField(default=False)
+    accept_privacy = models.BooleanField(default=False)
+    
+    # Existing Worker fields
     experience_years = models.IntegerField(default=0)
     bio = models.TextField(blank=True)
     name = models.CharField(max_length=255, blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
-
+    
     status = models.CharField(
-    max_length=20,
-    choices=[
-        ("pending", "Pending"),
-        ("approved", "Approved"),
-        ("rejected", "Rejected"),
-    ],
-    default="pending"
+        max_length=20,
+        choices=[
+            ("pending", "Pending"),
+            ("approved", "Approved"),
+            ("rejected", "Rejected"),
+        ],
+        default="pending"
     )
-
     apply_date = models.DateTimeField(auto_now_add=True)
-
     approved_appointments = models.IntegerField(default=0)
     rejected_appointments = models.IntegerField(default=0)
-
-    cv = models.FileField(upload_to="cv/", blank=True, null=True)
     
-    category = models.ForeignKey(
-    Category,
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name="workers" 
-    )
-
     def __str__(self):
         return f"Çalışan Profili: {self.user.email}"
-
 
 
 class Customer(models.Model):
