@@ -1,0 +1,98 @@
+/* Genel Sıfırlama ve Font */
+body {
+    font-family: Arial, sans-serif;
+    margin: 30000;
+    padding: 0;
+    display: flex; /* Ekranı ortalamak için */
+    justify-content: center; /* Yatayda ortala */
+    align-items: center; /* Dikeyde ortala */
+    min-height: 100vh; /* Tam ekran yüksekliği */
+    background-color: #fab1f4;
+}
+
+/* Giriş Kapsayıcısı (Login Box) */
+.login-kapsayici {
+    background-color: #7c3272; /* Beyaz kutu rengi */
+    padding: 40px;
+    align-items: center; /* Dikeyde ortala */
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(82, 4, 85, 0.1); /* Hafif gölge */
+    width: 350px; /* Kutunun sabit genişliği */
+    text-align: center;
+}
+
+/* Başlık */
+.login-form h2 {
+    margin-bottom: 30px;
+    color: #f8bbee;
+}
+
+/* Input Grupları */
+.input-grup {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.input-grup label {
+    display: block; /* Etiketi bir satırda tek başına göster */
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #ebe4e4;
+    font-size: 14px;
+}
+
+.input-grup input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box; /* Padding ve border'ın genişliğe dahil olmasını sağlar */
+    font-size: 16px;
+}
+
+/* Giriş Butonu */
+.giris-butonu {
+    width: 100%;
+    padding: 12px;
+    background-color: #ffbaff; /* Mavi buton rengi */
+    color: rgb(122, 38, 111);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+    transition: background-color 0.3s ease; /* Hover efekti için geçiş */
+}
+
+.giris-butonu:hover {
+    background-color: #af398e; /* Buton üzerine gelince daha koyu mavi */
+    color:#ebe4e4;
+}
+
+/* Alt mesaj (Kayıt Ol linki) */
+.alt-mesaj {
+    margin-top: 25px;
+    font-size: 14px;
+    color: #ffcdf8;
+}
+
+.alt-mesaj a {
+    color: #f6b0ff;
+    text-decoration: none; /* Alt çizgiyi kaldır */
+    font-weight: bold;
+}
+
+.alt-mesaj a:hover {
+    text-decoration: underline; /* Üzerine gelince alt çizgi ekle */
+    color:#d605f1;
+}
+.input-grup input::placeholder {
+    font-style: ıtalic;
+}
+.sifre-kurallari{
+    color:#ebe4e4;
+    font-size: 12px;
+   
+
+
+}

@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os, environ #SONRADAN EKLENDİ
+import os #SONRADAN EKLENDİ
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,12 +35,19 @@ ALLOWED_HOSTS = env("ALLOWED").split(",") #SONRADAN DEĞİŞTİRİLDİ
 # Application definition
 
 INSTALLED_APPS = [
+    'account',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',  #SONRADAN EKLENDİ
+    'djoser',                # DJOSER
+    'rest_framework_simplejwt', # Simple JWT
+    'drf_yasg',
+    'corsheaders', #SONRADAN EKLENDİ
+    
 ]
 
 MIDDLEWARE = [
@@ -51,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'myproject.urls'
@@ -58,7 +67,7 @@ ROOT_URLCONF = 'myproject.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -140,13 +149,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 MEDIA_URL  = "/media/" #SONRADAN EKLENDİ
-STATIC_ROOT = r"C:\apps\testweb\static"  #SONRADAN EKLENDİ
-MEDIA_ROOT  = r"C:\apps\testweb\media"   #SONRADAN EKLENDİ
-
-
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")   #SONRADAN EKLENDİ
-SESSION_COOKIE_SECURE = True                        #SONRADAN EKLENDİ
-CSRF_COOKIE_SECURE = True                              #SONRADAN EKLENDİ
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+MEDIA_ROOT  = os.path.join(BASE_DIR, "mediafiles")  # DÜZELTİLDİ
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage" #SONRADAN EKLENDİ
 
@@ -155,3 +159,27 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage" 
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_URL = 'login' # Giriş başarılı olunca ana sayfaya yönlendir.
+LOGOUT_URL = 'logout' # Çıkış başarılı olunca ana sayfaya yönlendir.
+LOGIN_REDIRECT_URL = 'home'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    )
+}
+
+AUTH_USER_MODEL = 'account.CustomUser'  # Özel kullanıcı modelini kullan
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",   # React dev server adresi
+    "http://127.0.0.1:3000",
+    # Canlıya çıktığınızda React domain'i de buraya eklenecek
+]
+
+#deneme deneme
+

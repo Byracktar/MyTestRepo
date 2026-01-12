@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Login{% endblock %}
+{% block css_files  %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{%endblock %}
+{% block content%}
+    <div class="login-kapsayici">
+        <h2>Kayıt Olun</h2>
+        <form method="POST">
+            {% csrf_token %}
+             {{ form.as_p }}
+             <button class="giris-butonu" type="submit">Kayıt Ol</button>
+             <p class="alt-mesaj">
+                Hesabınız var mı? <a href={%url 'login'%}>giriş Yap</a>
+            </p>
+        </form>
+    </div>
+
+{% endblock %}
+
